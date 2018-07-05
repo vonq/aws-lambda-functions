@@ -206,5 +206,5 @@ snowplow_columns = [
   "true_tstamp",
 
   # Fields modified in PII enrichemnt (JSON String)
-  "pii"
+  # "pii" either this column or true_tstamp doesn't exist in our data
 ]
