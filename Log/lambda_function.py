@@ -17,6 +17,8 @@ import re
 import StringIO
 import gzip
 
+from snowplow_columns import snowplow_columns
+
 # Parameters
 # ddApiKey: Datadog API Key
 ddApiKey = "<your_api_key>"
@@ -39,6 +41,7 @@ cloudtrail_regex = re.compile('\d+_CloudTrail_\w{2}-\w{4,9}-\d_\d{8}T\d{4}Z.+.js
 
 DD_SOURCE = "ddsource"
 DD_CUSTOM_TAGS = "ddtags"
+
 
 def lambda_handler(event, context):
     # Check prerequisites
@@ -68,11 +71,13 @@ def lambda_handler(event, context):
     finally:
         s.close()
 
+        
 def connect_to_datadog(host, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s = ssl.wrap_socket(s)
     s.connect((host, port))
     return s
+
 
 def generate_logs(event):
     try:
@@ -91,6 +96,7 @@ def generate_logs(event):
         err_message = 'Error parsing the object. Exception: {} for event {}'.format(str(e), event)
         logs = [err_message]
     return logs
+
 
 def safe_submit_log(s, log):
     try:
@@ -149,10 +155,17 @@ def s3_handler(event):
     elif is_snowplow(str(bucket)):
         # Send lines to Datadog
         snowplow_event_type = '_'.join(str(key).split("/")[1:3])
-        for line in data.splitlines():
-            # Create structured object and send it
-            structured_line = {"aws": {"s3": {"bucket": bucket, "key": key}, "snowplow": {"snowplow_event_type": snowplow_event_type}}, "message": line}
-            structured_logs.append(structured_line)
+        if(snowplow_event_type == "enriched_good"):
+            for line in data.splitlines():
+                # Create structured object and send it
+                event = snowplow_extract_event_from_string(line)
+                structured_line = {"aws": {"s3": {"bucket": bucket, "key": key}, "snowplow": {"snowplow_event_type": snowplow_event_type}}, "event": event}
+                structured_logs.append(structured_line)
+        else:
+            for line in data.splitlines():
+                # Create structured object and send it
+                structured_line = {"aws": {"s3": {"bucket": bucket, "key": key}, "snowplow": {"snowplow_event_type": snowplow_event_type}}, "message": line}
+                structured_logs.append(structured_line)
     else:
         # Send lines to Datadog
         for line in data.splitlines():
@@ -191,6 +204,7 @@ def awslogs_handler(event):
 
     return structured_logs
 
+
 #Handle Cloudwatch Events
 def cwevent_handler(event):
 
@@ -209,6 +223,7 @@ def cwevent_handler(event):
 
     return structured_logs
 
+
 # Handle Sns events
 def sns_handler(event):
 
@@ -223,6 +238,7 @@ def sns_handler(event):
         structured_logs.append(structured_line)
 
     return structured_logs
+
 
 def send_entry(s, log_entry):
     # The log_entry can only be a string or a dict
@@ -263,15 +279,16 @@ def merge_dicts(a, b, path=None):
 
 
 def is_snowplow(bucket):
-    is_snowplow = false
+    is_snowplow = False
     if (bucket.startswith("sp-com-vonq")):
-        is_snowplow = true
+        is_snowplow = True
     return is_snowplow
     
 
 def is_cloudtrail(key):
     match = cloudtrail_regex.search(key)
     return bool(match)
+
 
 def parse_event_source(event, key):
     for source in ["lambda", "redshift", "cloudfront", "kinesis", "mariadb", "mysql", "apigateway", "route53", "vpc", "rds", "sns"]:
@@ -287,3 +304,7 @@ def parse_event_source(event, key):
         if "s3" in event["Records"][0]:
             return "s3"
     return "aws"
+
+
+def snowplow_extract_event_from_string(line):
+    return dict(list(zip(snowplow_columns, line.split("\t"))))
