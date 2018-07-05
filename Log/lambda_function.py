@@ -125,6 +125,7 @@ def s3_handler(event):
     # Get the object from the event and show its content type
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = urllib.unquote_plus(event['Records'][0]['s3']['object']['key']).decode('utf8')
+    snowplow_event_type = '_'.join(str(key).split("/")[1:3])
 
     metadata[DD_SOURCE] = parse_event_source(event, key)
 
@@ -145,6 +146,12 @@ def s3_handler(event):
         for event in cloud_trail['Records']:
             # Create structured object and send it
             structured_line = merge_dicts(event, {"aws": {"s3": {"bucket": bucket, "key": key}}})
+            structured_logs.append(structured_line)
+    elif is_snowplow(str(bucket)):
+        # Send lines to Datadog
+        for line in data.splitlines():
+            # Create structured object and send it
+            structured_line = {"aws": {"s3": {"bucket": bucket, "key": key}, "snowplow": {"snowplow_event_type": snowplow_event_type}}, "message": line}
             structured_logs.append(structured_line)
     else:
         # Send lines to Datadog
@@ -254,6 +261,13 @@ def merge_dicts(a, b, path=None):
             a[key] = b[key]
     return a
 
+
+def is_snowplow(bucket):
+    is_snowplow = false
+    if (bucket.startswith("sp-com-vonq")):
+        is_snowplow = true
+    return is_snowplow
+    
 
 def is_cloudtrail(key):
     match = cloudtrail_regex.search(key)
