@@ -159,12 +159,12 @@ def s3_handler(event):
             for line in data.splitlines():
                 # Create structured object and send it
                 event = snowplow_extract_event_from_string(line)
-                structured_line = {"aws": {"s3": {"bucket": bucket, "key": key}}, "snowplow": {"snowplow_event_type": snowplow_event_type}, "event": event, "message": line}
+                structured_line = {"aws": {"s3": {"bucket": bucket, "key": key}}, "snowplow": {"event_type": snowplow_event_type, "event": event}, "message": line}
                 structured_logs.append(structured_line)
         else:
             for line in data.splitlines():
                 # Create structured object and send it
-                structured_line = {"aws": {"s3": {"bucket": bucket, "key": key}}, "snowplow": {"snowplow_event_type": snowplow_event_type}, "message": line}
+                structured_line = {"aws": {"s3": {"bucket": bucket, "key": key}}, "snowplow": {"event_type": snowplow_event_type}, "message": line}
                 structured_logs.append(structured_line)
     else:
         # Send lines to Datadog
