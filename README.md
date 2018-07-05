@@ -1,3 +1,6 @@
+# Vonq use case
+Currently we use Log/lambda_function.py to extract Snowplow events from S3 and load them to the data dog. This fork was made because we slightly changed the function.
+
 # dd-aws-lambda-functions
 Repository of lambda functions that process aws log streams and send data to datadog
 
