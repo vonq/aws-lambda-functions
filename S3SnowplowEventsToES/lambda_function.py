@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from requests_aws4auth import AWS4Auth
 
 from snowplow_columns import snowplow_columns
+from index_mapping import index_mapping
 
 s3 = boto3.client('s3')
 session = boto3.session.Session()
@@ -79,7 +80,8 @@ def create_index(es_client, current_index_name):
             print("Index {} already exists".format(current_index_name))
         else:
             print("Creating index {}".format(current_index_name))
-            es_client.indices.create(current_index_name)
+            print(index_mapping)
+            es_client.indices.create(current_index_name, index_mapping)
     except Exception as E:
         print("Unable to Create Index {0}".format(current_index_name))
         raise E
@@ -101,13 +103,13 @@ def extract_actions_from_response(response, bucket, key, current_index_name):
         for line in data.splitlines():
             # Create structured object and send it
             event = snowplow_extract_event_from_string(line)
-            structured_event = {"aws": {"s3": {"bucket": bucket, "key": key}}, "snowplow": {"event_type": snowplow_event_type, "event": event}, "message": line}
+            structured_event = {"meta": {"aws": {"s3": {"bucket": bucket, "key": key}}, "source": "snowplow", "type": snowplow_event_type}, "event": event, "message": line}
             action = {"_index": current_index_name, "_type": "snowplow_events","_source": structured_event}
             actions.append(action)
     else:
         for line in data.splitlines():
             # Create structured object and send it
-            structured_event = {"aws": {"s3": {"bucket": bucket, "key": key}}, "snowplow": {"event_type": snowplow_event_type}, "message": line}
+            structured_event = {"meta": {"aws": {"s3": {"bucket": bucket, "key": key}}, "source": "snowplow", "type": snowplow_event_type}, "message": line}
             action = {"_index": current_index_name, "_type": "snowplow_events","_source": structured_event} 
             actions.append(action)
     return actions
