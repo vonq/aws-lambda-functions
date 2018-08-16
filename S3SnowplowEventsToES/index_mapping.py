@@ -1,4 +1,7 @@
 index_mapping = {
+  "settings" : {
+    "index.mapping.ignore_malformed": True
+  },
   "mappings": {
     "snowplow_events": {
       "dynamic_date_formats": ["yyyy-MM-dd HH:mm:ss.SSS", "strict_date_optional_time", "yyyy/MM/dd HH:mm:ss Z||yyyy/MM/dd Z"],
@@ -12,7 +15,15 @@ index_mapping = {
             }
           }
         }
-      ]
+      ],
+      "properties": {
+        "dvce_sent_tstamp": {
+          "type": "keyword"
+        },
+        "dvce_created_tstamp": {
+          "type": "keyword"
+        }
+      }
     }
   }
 }
