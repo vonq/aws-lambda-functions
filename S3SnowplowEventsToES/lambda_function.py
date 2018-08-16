@@ -104,7 +104,7 @@ def extract_actions_from_response(response, bucket, key, current_index_name):
             # Create structured object and send it
             event = snowplow_extract_event_from_string(line)
             structured_event = {"meta": {"aws": {"s3": {"bucket": bucket, "key": key}}, "source": "snowplow", "type": snowplow_event_type}, "event": event, "message": line}
-            action = {"_index": current_index_name, "_type": "snowplow_events","_source": structured_event}
+            action = {"_index": current_index_name, "_type": "snowplow_events","_source": structured_event, "_id": "_".join([event["event_id"], event["collector_tstamp"]]) , '_op_type': 'create'}
             actions.append(action)
     else:
         for line in data.splitlines():
@@ -117,6 +117,7 @@ def extract_actions_from_response(response, bucket, key, current_index_name):
 def index_events(es_client, actions):
     if (actions):
         try:
+            print("Index %d documents" % len(actions))
             helpers.bulk(es_client, actions)
         except Exception:
             print("Failed to index documents")
@@ -141,7 +142,7 @@ def es_houskeeping(es_client):
     indices_to_delete = filter(
         lambda i_name: to_delete(i_name, earliest_date_to_keep),
         indices_list)
-    print(indices_to_delete)
+    print("Indices to delete: " + ", ".join(indices_to_delete))
     
     if (indices_to_delete):
         try:
@@ -150,7 +151,7 @@ def es_houskeeping(es_client):
             print("Failed to delete indices.")
             raise
     else:
-        print("There are no indeces to delete")
+        print("There are no indices to delete")
         
 def to_delete(i_name, earliest_date_to_keep):
     snowplow_events_index = i_name.startswith("snowplow_events_")
