@@ -38,6 +38,7 @@ def lambda_handler(event, context):
     current_index_name = "snowplow_events_{0}".format(current_index_name_modifier)
     
     es_client = connect_es(es_end_point)
+    es_houskeeping(es_client)
     create_index(es_client, current_index_name)
     
     actions = []
@@ -49,7 +50,6 @@ def lambda_handler(event, context):
         raise
         
     index_events(es_client, actions)
-    es_houskeeping(es_client)
 
 def connect_es(es_end_point):
     print ('Connecting to the ES Endpoint {0}'.format(es_end_point))
