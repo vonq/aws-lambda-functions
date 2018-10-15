@@ -10,6 +10,7 @@ import json
 import StringIO
 import gzip
 import os
+import time
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection, helpers
 from datetime import datetime, timedelta
@@ -118,7 +119,9 @@ def index_events(es_client, actions):
     if (actions):
         try:
             print("Index %d documents" % len(actions))
-            helpers.bulk(es_client, actions)
+            success_count, errors = helpers.bulk(es_client, actions)
+            print("Success inserts - %d" % success_count)
+            print("Inserts errors: %s" % ", ".join(str(errors)))
         except Exception:
             print("Failed to index documents")
             raise
@@ -147,9 +150,8 @@ def es_houskeeping(es_client):
     if (indices_to_delete):
         try:
             es_client.indices.delete(index=",".join(indices_to_delete))
-        except Exception:
-            print("Failed to delete indices.")
-            raise
+        except Exception, e:
+            print("Failed to delete indices. %s" % str(e))
     else:
         print("There are no indices to delete")
         
